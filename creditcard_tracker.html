@@ -1,0 +1,334 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Credit Card Benefit Tracker</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #f1f5f9; font-family: 'Inter', system-ui, sans-serif; }
+    button:focus { outline: none; }
+    input:focus { outline: 2px solid #3b82f6; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+
+    const TODAY = new Date();
+    const MONTH = TODAY.getMonth();
+    const YEAR = TODAY.getFullYear();
+
+    const CYCLE_OPTIONS = ["monthly","quarterly","semi-annual","annual","subscription"];
+    const CYCLE_LABELS = { monthly:"Monthly", quarterly:"Quarterly", "semi-annual":"Semi-Annual", annual:"Annual", subscription:"Subscription" };
+
+    const CARD_TEMPLATES = [
+      { id:"amex-gold", name:"Amex Gold", color:"#C9A84C", textColor:"#1a1a1a", benefits:[
+        { name:"Dining Credit", amount:"$10", cycle:"monthly", icon:"🍽️", description:"$10/mo at Grubhub, Cheesecake Factory, etc." },
+        { name:"Uber Cash", amount:"$10", cycle:"monthly", icon:"🚗", description:"$10/mo Uber Cash" },
+        { name:"Dunkin' Credit", amount:"$7", cycle:"monthly", icon:"☕", description:"$7/mo at Dunkin'" },
+        { name:"Resy Credit", amount:"$50", cycle:"semi-annual", icon:"🍷", description:"$50 Jan–Jun & $50 Jul–Dec on Resy" },
+      ]},
+      { id:"amex-platinum", name:"Amex Platinum", color:"#A8A9AD", textColor:"#1a1a1a", benefits:[
+        { name:"Uber Cash", amount:"$15", cycle:"monthly", icon:"🚗", description:"$15/mo Uber Cash ($35 in Dec)" },
+        { name:"Digital Entertainment", amount:"$20", cycle:"monthly", icon:"📺", description:"$20/mo on Peacock, Audible, etc." },
+        { name:"Saks Fifth Avenue", amount:"$50", cycle:"semi-annual", icon:"🛍️", description:"$50 Jan–Jun, $50 Jul–Dec" },
+        { name:"Airline Fee Credit", amount:"$200", cycle:"annual", icon:"✈️", description:"$200 airline incidental fees" },
+        { name:"Hotel Credit", amount:"$200", cycle:"annual", icon:"🏨", description:"$200 Fine Hotels & Resorts" },
+        { name:"Clear Plus", amount:"$189", cycle:"annual", icon:"🛂", description:"CLEAR Plus membership credit" },
+        { name:"Global Entry / TSA Pre✓", amount:"$100", cycle:"annual", icon:"🌐", description:"$100 Global Entry or TSA Pre✓" },
+      ]},
+      { id:"amex-hilton-aspire", name:"Amex Hilton Aspire", color:"#003087", textColor:"#ffffff", benefits:[
+        { name:"Resort Credit", amount:"$200", cycle:"semi-annual", icon:"🏖️", description:"$200 Jan–Jun & $200 Jul–Dec at Hilton Resorts" },
+        { name:"Airline Fee Credit", amount:"$50", cycle:"quarterly", icon:"✈️", description:"$50/quarter on incidental airline fees" },
+        { name:"Hilton Free Night", amount:"Free Night", cycle:"annual", icon:"🌙", description:"One free night reward at any Hilton property" },
+        { name:"Hilton Diamond Status", amount:"Elite", cycle:"subscription", icon:"💎", description:"Complimentary Hilton Honors Diamond status" },
+        { name:"Clear Plus", amount:"$189", cycle:"annual", icon:"🛂", description:"CLEAR Plus membership credit" },
+        { name:"Global Entry / TSA Pre✓", amount:"$100", cycle:"annual", icon:"🌐", description:"$100 Global Entry or TSA Pre✓" },
+      ]},
+      { id:"chase-sapphire-reserve", name:"Chase Sapphire Reserve", color:"#1a1a2e", textColor:"#ffffff", benefits:[
+        { name:"Travel Credit", amount:"$300", cycle:"annual", icon:"✈️", description:"$300 annual travel credit (auto-applied)" },
+        { name:"DoorDash Credit", amount:"$15", cycle:"monthly", icon:"🍕", description:"$15/mo DoorDash credit" },
+        { name:"Global Entry / TSA Pre✓", amount:"$100", cycle:"annual", icon:"🌐", description:"$100 Global Entry or TSA Pre✓" },
+      ]},
+      { id:"chase-sapphire-preferred", name:"Chase Sapphire Preferred", color:"#1b4fa8", textColor:"#ffffff", benefits:[
+        { name:"Instacart+ Credit", amount:"$15", cycle:"quarterly", icon:"🛒", description:"$15/quarter on Instacart" },
+        { name:"Hotel Credit", amount:"$50", cycle:"annual", icon:"🏨", description:"$50/yr on hotels via Chase Travel" },
+        { name:"Anniversary Bonus", amount:"10% pts", cycle:"annual", icon:"🎉", description:"10% bonus on points earned prior year" },
+      ]},
+      { id:"capital-one-venture-x", name:"Capital One Venture X", color:"#c41230", textColor:"#ffffff", benefits:[
+        { name:"Travel Credit", amount:"$300", cycle:"annual", icon:"✈️", description:"$300 Capital One Travel credit" },
+        { name:"Anniversary Miles", amount:"10K miles", cycle:"annual", icon:"🎉", description:"10,000 bonus miles each anniversary" },
+        { name:"Global Entry / TSA Pre✓", amount:"$100", cycle:"annual", icon:"🌐", description:"$100 Global Entry or TSA Pre✓" },
+      ]},
+      { id:"citi-prestige", name:"Citi Prestige", color:"#003B70", textColor:"#ffffff", benefits:[
+        { name:"Travel Credit", amount:"$250", cycle:"annual", icon:"✈️", description:"$250 annual travel credit" },
+        { name:"Global Entry / TSA Pre✓", amount:"$100", cycle:"annual", icon:"🌐", description:"$100 Global Entry or TSA Pre✓" },
+      ]},
+      { id:"wells-fargo-autograph", name:"Wells Fargo Autograph Journey", color:"#D71E28", textColor:"#ffffff", benefits:[
+        { name:"Airline Credit", amount:"$50", cycle:"annual", icon:"✈️", description:"$50 annual airline credit" },
+        { name:"Hotel Credit", amount:"$50", cycle:"annual", icon:"🏨", description:"$50 annual hotel credit" },
+      ]},
+      { id:"bilt", name:"Bilt Mastercard", color:"#222", textColor:"#ffffff", benefits:[
+        { name:"Rent Rewards", amount:"1x pts", cycle:"monthly", icon:"🏠", description:"Earn points on rent payments, no fee" },
+        { name:"Rent Day Bonus", amount:"2x pts", cycle:"monthly", icon:"📅", description:"Double points on all purchases on the 1st" },
+      ]},
+    ];
+
+    const uid = () => Math.random().toString(36).slice(2,8);
+
+    function cycleBadge(cycle) {
+      return ({ monthly:{bg:"#dbeafe",text:"#1d4ed8"}, quarterly:{bg:"#ede9fe",text:"#6d28d9"}, "semi-annual":{bg:"#fef9c3",text:"#a16207"}, annual:{bg:"#dcfce7",text:"#15803d"}, subscription:{bg:"#f3e8ff",text:"#7c3aed"} }[cycle] || {bg:"#f3f4f6",text:"#6b7280"});
+    }
+
+    function getDeadline(cycle) {
+      if (cycle==="monthly") { const d=Math.ceil((new Date(YEAR,MONTH+1,0)-TODAY)/86400000); return {label:`${d}d left this month`,urgent:d<=7}; }
+      if (cycle==="quarterly") { const qEnd=[2,5,8,11].find(m=>m>=MONTH)??11; const d=Math.ceil((new Date(YEAR,qEnd+1,0)-TODAY)/86400000); return {label:`${d}d left this quarter`,urgent:d<=14}; }
+      if (cycle==="semi-annual") { const end=MONTH<6?new Date(YEAR,6,0):new Date(YEAR,12,0); const d=Math.ceil((end-TODAY)/86400000); return {label:`${d}d left this period`,urgent:d<=14}; }
+      if (cycle==="subscription") return {label:"Ongoing",urgent:false};
+      const d=Math.ceil((new Date(YEAR,11,31)-TODAY)/86400000); return {label:`${d}d left this year`,urgent:d<=30};
+    }
+
+    function BenefitRow({benefit,used,onToggle,onEdit,onDelete}) {
+      const {label,urgent}=getDeadline(benefit.cycle);
+      const badge=cycleBadge(benefit.cycle);
+      return (
+        <div style={{display:"flex",alignItems:"center",gap:10,padding:"11px 12px",background:used?"#f0fdf4":urgent?"#fff7ed":"#fff",borderLeft:`4px solid ${used?"#22c55e":urgent?"#f97316":"#e5e7eb"}`,borderRadius:10,marginBottom:8,boxShadow:"0 1px 3px rgba(0,0,0,0.07)",opacity:used?0.72:1}}>
+          <div style={{fontSize:20,cursor:"pointer"}} onClick={()=>onToggle(benefit.id)}>{benefit.icon}</div>
+          <div style={{flex:1,minWidth:0,cursor:"pointer"}} onClick={()=>onToggle(benefit.id)}>
+            <div style={{display:"flex",justifyContent:"space-between"}}>
+              <span style={{fontWeight:600,fontSize:14,color:"#111"}}>{benefit.name}</span>
+              <span style={{fontWeight:700,fontSize:14,color:used?"#16a34a":"#111",marginLeft:6,whiteSpace:"nowrap"}}>{benefit.amount}</span>
+            </div>
+            <div style={{fontSize:11,color:"#6b7280",marginTop:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{benefit.description}</div>
+            <div style={{display:"flex",gap:5,marginTop:4,flexWrap:"wrap"}}>
+              <span style={{fontSize:10,fontWeight:600,padding:"2px 7px",borderRadius:99,background:badge.bg,color:badge.text}}>{CYCLE_LABELS[benefit.cycle]}</span>
+              <span style={{fontSize:10,fontWeight:600,padding:"2px 7px",borderRadius:99,background:used?"#dcfce7":urgent?"#ffedd5":"#f3f4f6",color:used?"#16a34a":urgent?"#ea580c":"#6b7280"}}>{used?"✓ Used":urgent?"⚠ "+label:label}</span>
+            </div>
+          </div>
+          <div style={{display:"flex",flexDirection:"column",gap:4}}>
+            <button onClick={()=>onEdit(benefit)} style={{background:"#f3f4f6",border:"none",borderRadius:6,padding:"4px 8px",fontSize:11,cursor:"pointer",color:"#374151"}}>✏️</button>
+            <button onClick={()=>onDelete(benefit.id)} style={{background:"#fef2f2",border:"none",borderRadius:6,padding:"4px 8px",fontSize:11,cursor:"pointer",color:"#dc2626"}}>🗑</button>
+          </div>
+        </div>
+      );
+    }
+
+    function BenefitModal({benefit,onSave,onClose}) {
+      const [form,setForm]=useState(benefit||{name:"",amount:"",cycle:"monthly",icon:"💳",description:""});
+      const set=(k,v)=>setForm(f=>({...f,[k]:v}));
+      const icons=["💳","✈️","🏨","🍽️","🚗","☕","🛍️","🏋️","🌐","🛂","🎉","🛒","🏖️","💎","🌙","📺","🚴","🚘","🍕","🏠","📅","⚡","🎵","🎮","💊"];
+      return (
+        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",zIndex:100,display:"flex",alignItems:"flex-end",justifyContent:"center"}} onClick={onClose}>
+          <div style={{background:"#fff",borderRadius:"20px 20px 0 0",padding:20,width:"100%",maxWidth:480,maxHeight:"90vh",overflowY:"auto"}} onClick={e=>e.stopPropagation()}>
+            <div style={{fontWeight:700,fontSize:16,marginBottom:16}}>{benefit?"Edit Benefit":"Add Benefit"}</div>
+            <div style={{marginBottom:10}}>
+              <div style={{fontSize:12,fontWeight:600,color:"#6b7280",marginBottom:4}}>Icon</div>
+              <div style={{display:"flex",flexWrap:"wrap",gap:6}}>{icons.map(ic=><button key={ic} onClick={()=>set("icon",ic)} style={{fontSize:20,background:form.icon===ic?"#dbeafe":"#f3f4f6",border:form.icon===ic?"2px solid #3b82f6":"2px solid transparent",borderRadius:8,padding:"4px 6px",cursor:"pointer"}}>{ic}</button>)}</div>
+            </div>
+            {[["name","Benefit Name"],["amount","Amount (e.g. $10, Free Night)"],["description","Description (optional)"]].map(([k,lbl])=>(
+              <div key={k} style={{marginBottom:10}}>
+                <div style={{fontSize:12,fontWeight:600,color:"#6b7280",marginBottom:4}}>{lbl}</div>
+                <input value={form[k]} onChange={e=>set(k,e.target.value)} style={{width:"100%",padding:"10px 12px",borderRadius:8,border:"1px solid #e5e7eb",fontSize:14}} />
+              </div>
+            ))}
+            <div style={{marginBottom:16}}>
+              <div style={{fontSize:12,fontWeight:600,color:"#6b7280",marginBottom:4}}>Renewal Cycle</div>
+              <div style={{display:"flex",flexWrap:"wrap",gap:8}}>{CYCLE_OPTIONS.map(c=>{const b=cycleBadge(c);return(<button key={c} onClick={()=>set("cycle",c)} style={{padding:"6px 14px",borderRadius:99,border:form.cycle===c?`2px solid ${b.text}`:"2px solid #e5e7eb",background:form.cycle===c?b.bg:"#fff",color:form.cycle===c?b.text:"#6b7280",fontWeight:600,fontSize:12,cursor:"pointer"}}>{CYCLE_LABELS[c]}</button>);})}</div>
+            </div>
+            <div style={{display:"flex",gap:8}}>
+              <button onClick={onClose} style={{flex:1,padding:"12px",borderRadius:10,border:"1px solid #e5e7eb",background:"#f9fafb",fontWeight:600,fontSize:14,cursor:"pointer"}}>Cancel</button>
+              <button onClick={()=>{if(form.name&&form.amount)onSave(form);}} style={{flex:2,padding:"12px",borderRadius:10,border:"none",background:"#1b4fa8",color:"#fff",fontWeight:700,fontSize:14,cursor:"pointer"}}>Save Benefit</button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    function CardModal({card,onSave,onClose}) {
+      const [form,setForm]=useState(card||{name:"",color:"#1b4fa8",textColor:"#ffffff"});
+      const set=(k,v)=>setForm(f=>({...f,[k]:v}));
+      const presets=[["#C9A84C","#1a1a1a"],["#A8A9AD","#1a1a1a"],["#003087","#fff"],["#1b4fa8","#fff"],["#1a1a2e","#fff"],["#c41230","#fff"],["#003B70","#fff"],["#D71E28","#fff"],["#222","#fff"],["#0f766e","#fff"],["#7c3aed","#fff"],["#b45309","#fff"]];
+      return (
+        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",zIndex:100,display:"flex",alignItems:"flex-end",justifyContent:"center"}} onClick={onClose}>
+          <div style={{background:"#fff",borderRadius:"20px 20px 0 0",padding:20,width:"100%",maxWidth:480}} onClick={e=>e.stopPropagation()}>
+            <div style={{fontWeight:700,fontSize:16,marginBottom:16}}>{card?"Edit Card":"Add Card"}</div>
+            <div style={{marginBottom:12}}>
+              <div style={{fontSize:12,fontWeight:600,color:"#6b7280",marginBottom:4}}>Card Name</div>
+              <input value={form.name} onChange={e=>set("name",e.target.value)} style={{width:"100%",padding:"10px 12px",borderRadius:8,border:"1px solid #e5e7eb",fontSize:14}} />
+            </div>
+            <div style={{marginBottom:16}}>
+              <div style={{fontSize:12,fontWeight:600,color:"#6b7280",marginBottom:4}}>Card Color</div>
+              <div style={{display:"flex",flexWrap:"wrap",gap:8}}>{presets.map(([c,t])=><button key={c} onClick={()=>{set("color",c);set("textColor",t);}} style={{width:32,height:32,borderRadius:8,background:c,border:form.color===c?"3px solid #3b82f6":"3px solid transparent",cursor:"pointer"}} />)}</div>
+            </div>
+            <div style={{background:form.color,color:form.textColor,borderRadius:10,padding:"10px 14px",marginBottom:16,fontWeight:700}}>{form.name||"Card Preview"}</div>
+            <div style={{display:"flex",gap:8}}>
+              <button onClick={onClose} style={{flex:1,padding:"12px",borderRadius:10,border:"1px solid #e5e7eb",background:"#f9fafb",fontWeight:600,fontSize:14,cursor:"pointer"}}>Cancel</button>
+              <button onClick={()=>{if(form.name)onSave(form);}} style={{flex:2,padding:"12px",borderRadius:10,border:"none",background:"#1b4fa8",color:"#fff",fontWeight:700,fontSize:14,cursor:"pointer"}}>Save Card</button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    function TemplateModal({onSelect,onClose}) {
+      return (
+        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",zIndex:100,display:"flex",alignItems:"flex-end",justifyContent:"center"}} onClick={onClose}>
+          <div style={{background:"#fff",borderRadius:"20px 20px 0 0",padding:20,width:"100%",maxWidth:480,maxHeight:"80vh",overflowY:"auto"}} onClick={e=>e.stopPropagation()}>
+            <div style={{fontWeight:700,fontSize:16,marginBottom:4}}>Add from Template</div>
+            <div style={{fontSize:12,color:"#9ca3af",marginBottom:14}}>Select a card to add with pre-filled benefits</div>
+            {CARD_TEMPLATES.map(t=>(
+              <div key={t.id} onClick={()=>onSelect(t)} style={{display:"flex",alignItems:"center",gap:12,padding:"12px 14px",borderRadius:10,border:"1px solid #e5e7eb",marginBottom:8,cursor:"pointer"}}>
+                <div style={{width:36,height:36,borderRadius:8,background:t.color,flexShrink:0}} />
+                <div><div style={{fontWeight:600,fontSize:14}}>{t.name}</div><div style={{fontSize:12,color:"#9ca3af"}}>{t.benefits.length} benefits</div></div>
+              </div>
+            ))}
+            <button onClick={onClose} style={{width:"100%",padding:"12px",borderRadius:10,border:"1px solid #e5e7eb",background:"#f9fafb",fontWeight:600,fontSize:14,cursor:"pointer",marginTop:4}}>Cancel</button>
+          </div>
+        </div>
+      );
+    }
+
+    const INITIAL_CARDS = ["amex-gold","amex-hilton-aspire","chase-sapphire-preferred"].map(id=>{
+      const t=CARD_TEMPLATES.find(c=>c.id===id);
+      return {...t,id:uid(),benefits:t.benefits.map(b=>({...b,id:uid()}))};
+    });
+
+    function App() {
+      const [cards,setCards]=useState(INITIAL_CARDS);
+      const [usedMap,setUsedMap]=useState({});
+      const [openCards,setOpenCards]=useState(Object.fromEntries(INITIAL_CARDS.map(c=>[c.id,true])));
+      const [activeTab,setActiveTab]=useState("all");
+      const [editingBenefit,setEditingBenefit]=useState(null);
+      const [editingCard,setEditingCard]=useState(null);
+      const [showTemplates,setShowTemplates]=useState(false);
+
+      useEffect(()=>{
+        try { const s=JSON.parse(localStorage.getItem("cc-tracker-v3")||"null"); if(s){setCards(s.cards);setUsedMap(s.usedMap||{});setOpenCards(Object.fromEntries(s.cards.map(c=>[c.id,true])));} } catch {}
+      },[]);
+
+      const save=(c,u)=>{ try{localStorage.setItem("cc-tracker-v3",JSON.stringify({cards:c,usedMap:u}));}catch{} };
+      const updateCards=(next,u)=>{setCards(next);save(next,u??usedMap);};
+      const updateUsed=(next)=>{setUsedMap(next);save(cards,next);};
+      const toggleUsed=(cardId,bid)=>{ const k=cardId+":"+bid; updateUsed({...usedMap,[k]:!usedMap[k]}); };
+
+      const saveBenefit=(cardId,form)=>{
+        const next=cards.map(c=>{
+          if(c.id!==cardId)return c;
+          if(editingBenefit.benefit) return {...c,benefits:c.benefits.map(b=>b.id===editingBenefit.benefit.id?{...form,id:b.id}:b)};
+          return {...c,benefits:[...c.benefits,{...form,id:uid()}]};
+        });
+        updateCards(next); setEditingBenefit(null);
+      };
+      const deleteBenefit=(cardId,bid)=>updateCards(cards.map(c=>c.id!==cardId?c:{...c,benefits:c.benefits.filter(b=>b.id!==bid)}));
+      const saveCard=(form)=>{
+        if(editingCard&&editingCard.id){ updateCards(cards.map(c=>c.id===editingCard.id?{...c,...form}:c)); }
+        else { const nc={...form,id:uid(),benefits:[]}; updateCards([...cards,nc]); setOpenCards(o=>({...o,[nc.id]:true})); }
+        setEditingCard(null);
+      };
+      const deleteCard=(cardId)=>{
+        updateCards(cards.filter(c=>c.id!==cardId));
+        const next={...usedMap}; Object.keys(next).filter(k=>k.startsWith(cardId)).forEach(k=>delete next[k]); updateUsed(next);
+      };
+      const addFromTemplate=(t)=>{
+        const nc={...t,id:uid(),benefits:t.benefits.map(b=>({...b,id:uid()}))};
+        updateCards([...cards,nc]); setOpenCards(o=>({...o,[nc.id]:true})); setShowTemplates(false);
+      };
+
+      const urgentBenefits=cards.flatMap(c=>c.benefits.filter(b=>!usedMap[c.id+":"+b.id]&&getDeadline(b.cycle).urgent).map(b=>({...b,cardName:c.name,cardId:c.id,cardColor:c.color})));
+      const monthName=TODAY.toLocaleString("default",{month:"long"});
+
+      return (
+        <div style={{maxWidth:480,margin:"0 auto",fontFamily:"'Inter',system-ui,sans-serif",background:"#f1f5f9",minHeight:"100vh",paddingBottom:80}}>
+          <div style={{background:"linear-gradient(135deg,#1e293b,#334155)",padding:"20px 16px 16px",color:"#fff"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+              <div>
+                <div style={{fontSize:20,fontWeight:800}}>💳 Benefit Tracker</div>
+                <div style={{fontSize:12,opacity:0.7,marginTop:2}}>{monthName} {YEAR}</div>
+              </div>
+              <div style={{display:"flex",gap:8}}>
+                <button onClick={()=>setShowTemplates(true)} style={{background:"#3b82f6",color:"#fff",border:"none",borderRadius:8,padding:"7px 12px",fontWeight:600,fontSize:12,cursor:"pointer"}}>+ Template</button>
+                <button onClick={()=>setEditingCard("new")} style={{background:"rgba(255,255,255,0.15)",color:"#fff",border:"none",borderRadius:8,padding:"7px 12px",fontWeight:600,fontSize:12,cursor:"pointer"}}>+ Card</button>
+              </div>
+            </div>
+            {urgentBenefits.length>0&&(
+              <div style={{marginTop:12,background:"#f97316",borderRadius:10,padding:"10px 12px"}}>
+                <div style={{fontWeight:700,fontSize:13}}>⚠️ {urgentBenefits.length} benefit{urgentBenefits.length>1?"s":""} expiring soon!</div>
+                <div style={{fontSize:12,opacity:0.9,marginTop:2}}>{urgentBenefits.map(b=>`${b.cardName}: ${b.name}`).join(" · ")}</div>
+              </div>
+            )}
+          </div>
+
+          <div style={{display:"flex",background:"#fff",borderBottom:"1px solid #e5e7eb"}}>
+            {[["all","All"],["urgent",urgentBenefits.length?`⚠ Urgent (${urgentBenefits.length})`:"⚠ Urgent"],["used","Used"]].map(([id,lbl])=>(
+              <button key={id} onClick={()=>setActiveTab(id)} style={{flex:1,padding:"12px 4px",border:"none",background:"none",cursor:"pointer",fontWeight:activeTab===id?700:400,color:activeTab===id?"#1b4fa8":"#6b7280",borderBottom:activeTab===id?"2px solid #1b4fa8":"2px solid transparent",fontSize:12}}>{lbl}</button>
+            ))}
+          </div>
+
+          <div style={{padding:"14px 12px"}}>
+            {activeTab==="all"&&cards.map(c=>(
+              <div key={c.id} style={{marginBottom:16,borderRadius:14,overflow:"hidden",boxShadow:"0 2px 8px rgba(0,0,0,0.10)"}}>
+                <div style={{background:c.color,color:c.textColor,padding:"14px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                  <div onClick={()=>setOpenCards(o=>({...o,[c.id]:!o[c.id]}))} style={{flex:1,cursor:"pointer"}}>
+                    <div style={{fontWeight:700,fontSize:16}}>{c.name}</div>
+                    <div style={{fontSize:12,opacity:0.85,marginTop:2}}>
+                      {c.benefits.filter(b=>usedMap[c.id+":"+b.id]).length}/{c.benefits.length} used
+                      {urgentBenefits.filter(b=>b.cardId===c.id).length>0&&<span style={{marginLeft:8,background:"#f97316",color:"#fff",borderRadius:99,padding:"1px 8px",fontSize:11}}>⚠ expiring soon</span>}
+                    </div>
+                  </div>
+                  <div style={{display:"flex",gap:6,alignItems:"center"}}>
+                    <button onClick={()=>setEditingCard(c)} style={{background:"rgba(255,255,255,0.2)",border:"none",borderRadius:6,padding:"4px 8px",fontSize:12,cursor:"pointer",color:c.textColor}}>✏️</button>
+                    <button onClick={()=>{if(window.confirm(`Delete ${c.name}?`))deleteCard(c.id);}} style={{background:"rgba(255,0,0,0.2)",border:"none",borderRadius:6,padding:"4px 8px",fontSize:12,cursor:"pointer",color:c.textColor}}>🗑</button>
+                    <span onClick={()=>setOpenCards(o=>({...o,[c.id]:!o[c.id]}))} style={{fontSize:16,cursor:"pointer"}}>{openCards[c.id]?"▲":"▼"}</span>
+                  </div>
+                </div>
+                {openCards[c.id]&&(
+                  <div style={{background:"#f9fafb",padding:"12px 12px 8px"}}>
+                    <div style={{fontSize:11,color:"#9ca3af",marginBottom:8,paddingLeft:2}}>Tap a benefit to mark as used</div>
+                    {c.benefits.map(b=><BenefitRow key={b.id} benefit={b} used={!!usedMap[c.id+":"+b.id]} onToggle={bid=>toggleUsed(c.id,bid)} onEdit={ben=>setEditingBenefit({cardId:c.id,benefit:ben})} onDelete={bid=>deleteBenefit(c.id,bid)} />)}
+                    <button onClick={()=>setEditingBenefit({cardId:c.id,benefit:null})} style={{width:"100%",padding:"10px",borderRadius:10,border:"2px dashed #d1d5db",background:"transparent",color:"#6b7280",fontWeight:600,fontSize:13,cursor:"pointer",marginTop:4}}>+ Add Benefit</button>
+                  </div>
+                )}
+              </div>
+            ))}
+
+            {activeTab==="urgent"&&(
+              urgentBenefits.length===0
+                ?<div style={{textAlign:"center",padding:40,color:"#9ca3af"}}>🎉 No urgent benefits right now!</div>
+                :urgentBenefits.map(b=>(
+                  <div key={b.cardId+b.id} style={{marginBottom:8}}>
+                    <div style={{fontSize:11,fontWeight:600,color:"#374151",marginBottom:4,paddingLeft:2}}>{b.cardName}</div>
+                    <BenefitRow benefit={b} used={false} onToggle={bid=>toggleUsed(b.cardId,bid)} onEdit={ben=>setEditingBenefit({cardId:b.cardId,benefit:ben})} onDelete={bid=>deleteBenefit(b.cardId,bid)} />
+                  </div>
+                ))
+            )}
+
+            {activeTab==="used"&&(()=>{
+              const items=cards.flatMap(c=>c.benefits.filter(b=>usedMap[c.id+":"+b.id]).map(b=>({...b,cardName:c.name,cardId:c.id})));
+              return items.length===0
+                ?<div style={{textAlign:"center",padding:40,color:"#9ca3af"}}>No benefits marked as used yet.</div>
+                :items.map(b=>(
+                  <div key={b.cardId+b.id} style={{marginBottom:8}}>
+                    <div style={{fontSize:11,fontWeight:600,color:"#374151",marginBottom:4,paddingLeft:2}}>{b.cardName}</div>
+                    <BenefitRow benefit={b} used={true} onToggle={bid=>toggleUsed(b.cardId,bid)} onEdit={ben=>setEditingBenefit({cardId:b.cardId,benefit:ben})} onDelete={bid=>deleteBenefit(b.cardId,bid)} />
+                  </div>
+                ));
+            })()}
+          </div>
+
+          {editingBenefit&&<BenefitModal benefit={editingBenefit.benefit} onSave={form=>saveBenefit(editingBenefit.cardId,form)} onClose={()=>setEditingBenefit(null)} />}
+          {editingCard&&<CardModal card={editingCard==="new"?null:editingCard} onSave={saveCard} onClose={()=>setEditingCard(null)} />}
+          {showTemplates&&<TemplateModal onSelect={addFromTemplate} onClose={()=>setShowTemplates(false)} />}
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+  </script>
+</body>
+</html>
